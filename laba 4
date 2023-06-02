@@ -1,0 +1,345 @@
+#include <iostream>
+#include <fstream>
+#include <Windows.h>
+#include <chrono>
+#include <string>
+
+using namespace std;
+using namespace chrono;
+
+struct Node {                       //создание узлов
+    int key;
+    int balance;
+    Node* left;
+    Node* right;
+};
+
+struct Timer {
+    time_point<steady_clock, duration<__int64, ratio<1, 1000000000>>> start, end;
+    duration<__int64, ratio<1, 1000000000>> duration;
+} timer;
+
+int Height(Node* (&root))
+{
+    if (root == NULL) {
+        return 0;
+    }
+    else {
+        unsigned char hleft = Height(root->left);
+        unsigned char hright = Height(root->right);
+        root->balance = (hleft > hright ? hleft : hright) + 1;
+    }
+}
+
+void Balance(Node* (&root)) {     
+    if (root != NULL) {
+        root->balance = Height(root->right) - Height(root->left);
+        Balance(root->left);
+        Balance(root->right);
+    }
+}
+
+
+void TurnLeft(Node* (&root)) {       //малый поворот налево
+    Node* RightTree, * RightTreeLeftTree;
+    RightTree = root->right;
+    RightTreeLeftTree = RightTree->left;
+    RightTree->left = root;
+    root->right = RightTreeLeftTree;
+    root = RightTree;
+    Balance(root->left);
+    Balance(root);
+}
+void TurnRight(Node* (&root)) {       //малый поворот направо
+    Node* LeftTree, * LeftTreeRightTree;
+    LeftTree = root->left;
+    LeftTreeRightTree = LeftTree->right;
+    LeftTree->right = root;
+    root->left = LeftTreeRightTree;
+    root = LeftTree;
+    Balance(root->right);
+    Balance(root);
+}
+
+void Insert(Node* (&root), int d) {     //вставка ключа key в дерево с корнем root
+    if (root == NULL) {
+        root = new Node;
+        root->key = d;
+        root->balance = 0;
+        root->left = NULL;
+        root->right = NULL;
+    }
+    else {
+        if (d > root->key) {
+            Insert(root->right, d);
+            if (Height(root->right) - Height(root->left) > 1) {
+                if (Height(root->right->right) < Height(root->right->left)) {
+                    TurnRight(root->right);
+                }
+                TurnLeft(root);
+            }
+        }
+        else {
+            if (d < root->key) {
+                Insert(root->left, d);
+                if (Height(root->left) - Height(root->right) > 1) {
+                    if (Height(root->left->left) < Height(root->left->right)) {
+                        TurnLeft(root->left);
+                    }
+                    TurnRight(root);
+                }
+            }
+        }
+        Balance(root);
+    }
+}
+
+struct Bole
+{
+    Bole* prev;
+    string str;
+
+    Bole(Bole* prev, string str)
+    {
+        this->prev = prev;
+        this->str = str;
+    }
+};
+void OutputBole(Bole* (&bole)) {
+    if (bole == NULL) return;
+    OutputBole(bole->prev);
+    cout << bole->str;
+}
+void Output(Node* root, Bole* prev, bool good) {      //вывод дерева
+    if (root == NULL) return;
+    string prev_str = "    ";
+    Bole* bole = new Bole(prev, prev_str);
+    Output(root->right, bole, true);
+    if (!prev) {
+        bole->str = "--->";
+    }
+    else if (good) {
+        bole->str = ".-->";
+        prev_str = "   |";
+    }
+    else {
+        bole->str = "`-->";
+        prev->str = prev_str;
+    }
+    OutputBole(bole);
+    cout << root->key << endl;
+    if (prev) prev->str = prev_str;
+    bole->str = "   |";
+    Output(root->left, bole, false);
+}
+
+void Create1(Node* (&root), int Amount) {     //создание дерева 1-м способом
+    int count = 0, value;
+    while (count <= Amount) {
+        value = 99 - (rand() % 199);
+        Insert(root, value);
+        count++;
+    }
+}
+void Create2(Node* (&root)) {      //создание дерева 2-м способом
+    string str;
+    int value;
+    cout << "Введите элементы дерева:";
+    while (true) {
+        cin >> str;
+        if (str == "00") {
+            break;
+        }
+        value = stoi(str);
+        Insert(root, value);
+    }
+}
+
+void Clear(Node* (&root)) {         //очищение дерева
+    if (root != NULL) {
+        Clear(root->right);
+        Clear(root->left);
+        delete root;
+        root = NULL;
+    }
+}
+int MaxValueNode(Node* (&origin)) {
+    if (origin->right == NULL) {
+        return origin->key;
+    }
+    else {
+        return MaxValueNode(origin->right);
+    }
+}
+
+void Delete(Node* (&root), int value) {
+    if (value > root->key) {
+        Delete(root->right, value);
+    }
+    else if (value < root->key) {
+        Delete(root->left, value);
+    }
+    else {
+        if (root->right && root->left != NULL) {
+            int maxvalue = MaxValueNode(root->left);
+            root->key = maxvalue;
+            Delete(root->left, maxvalue);
+        }
+        else if (root->right == NULL) {
+            Node* Delete = root;
+            root = root->left;
+            delete Delete;
+        }
+        else if (root->left == NULL) {
+            Node* Delete = root;
+            root = root->right;
+            delete Delete;
+        }
+        else {
+            delete root;
+            root = NULL;
+        }
+    }
+    Balance(root);
+}
+
+void Search(Node* (&root), int value) {
+    if (root == NULL) {
+        return;
+    }
+    if (value > root->key) {
+        Search(root->right, value);
+    }
+    else if (value < root->key) {
+        Search(root->left, value);
+    }
+    else {
+        cout << root->key << " - значение.\n";
+    }
+}
+
+bool Checking(Node* (&origin), int value) {
+    if (origin == NULL) {
+        return false;
+    }
+    if (value == origin->key) {
+        return true;
+    }
+    if (value < origin->key) {
+        return Checking(origin->left, value);
+    }
+    else {
+        return Checking(origin->right, value);
+    }
+}
+
+
+void main() {
+    srand(time(NULL));
+    setlocale(0, "");
+    int choice, number;
+    int N;
+    Node* root;
+    root = NULL;
+    while (true) {
+        cout << "Меню:\n"
+            << "1 - Создать AVL-дерево\n"
+            << "2 - Вывод в консоль AVL_tree АВЛ-дерева\n"
+            << "3 - Вставить элемент в AVL-дерево\n"
+            << "4 - Удалить элемент из AVL-дерева\n"
+            << "5 - Вывести на консоль элемент AVL-дерева\n"
+            << "6 - Вычисление времени проверки на сбалансированность\n"
+            << "0 - Выход\n";
+        cin >> choice;
+        switch (choice) {
+
+        case 0:
+            return;
+
+        case 1:
+            Clear(root);
+            int choice1;
+            system("cls");
+            cout << "Каким способом вы хотите создать дерево?\n"
+                << "1 - Ввести количество элементов АВЛ-дерева, которое автоматически заполняется случайными числами (–99 до 99)\n"
+                << "2 - Ввести элементы АВЛ-дерева\n";
+            cin >> choice1;
+            switch (choice1) {
+            case 1:
+                cout << "Введите число элементов дерева:\n";
+                cin >> N;
+                timer.start = steady_clock::now();
+                Create1(root, N);
+                Balance(root);
+                timer.end = steady_clock::now();
+                timer.duration = timer.end - timer.start;
+                Output(root, NULL, false);
+                cout << "Время, затраченное на создание дерева: " << timer.duration.count() << " наносекунд.\n";
+                break;
+
+            case 2:
+                Create2(root);
+                Balance(root);
+                Output(root, NULL, false);
+                break;
+
+            }
+            break;
+
+        case 2:
+            system("cls");
+            Output(root, NULL, false);
+            break;
+
+        case 3:
+            system("cls");
+            Output(root, NULL, false);
+            cout << "Введите число, которое хотите добавить:\n";
+            cin >> number;
+            timer.start = steady_clock::now();
+            Insert(root, number);
+            timer.end = steady_clock::now();
+            timer.duration = timer.end - timer.start;
+            Output(root, NULL, false);
+            cout << "Время, затраченное на вставку элемента: " << timer.duration.count() << " наносекунд.\n";
+            break;
+
+        case 4:
+            system("cls");
+            Output(root, NULL, false);
+            cout << "Введите число, которое хотите удалить:\n";
+            cin >> number;
+            timer.start = steady_clock::now();
+            Delete(root, number);
+            timer.end = steady_clock::now();
+            timer.duration = timer.end - timer.start;
+            Output(root, NULL, false);
+            cout << "Время, затраченное на удаление элемента: " << timer.duration.count() << " наносекунд.\n";
+            break;
+
+        case 5:
+            system("cls");
+            Output(root, NULL, false);
+            cout << "Введите число, которое хотите найти:\n";
+            cin >> number;
+            timer.start = steady_clock::now();
+            Search(root, number);
+            timer.end = steady_clock::now();
+            timer.duration = timer.end - timer.start;
+            Output(root, NULL, false);
+            cout << "Время, затраченное на поиск элемента: " << timer.duration.count() << " наносекунд.\n";
+            break;
+
+        case 6:
+            system("cls");
+            Output(root, NULL, false);
+            timer.start = steady_clock::now();
+            Balance(root);
+            timer.end = steady_clock::now();
+            timer.duration = timer.end - timer.start;
+            cout << "Время проверки на сбалансированность: " << timer.duration.count() << " наносекунд.\n";
+            break;
+        }
+
+    }
+}
